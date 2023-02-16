@@ -1,5 +1,5 @@
 {
-	"name": "generate-typescript-switch-case-for-enum-type-language-service-plugin",
+	"name": "generate-typescript-switch-case-for-enum-type-language-service-plugin-with-not-reachable",
 	"version": "0.0.10",
 	"description": "A typescript language service plugin to generate switch case for enum type",
 	"main": "index.js",

@@ -1,5 +1,4 @@
 "use strict";
-//import { TypeChecker, Expression } from 'typescript/lib/tsserverlibrary'
 var __assign = (this && this.__assign) || function () {
     __assign = Object.assign || function(t) {
         for (var s, i = 1, n = arguments.length; i < n; i++) {
@@ -39,7 +38,7 @@ function init(modules) {
                         return false;
                 }
             }
-            return node.caseBlock.getChildCount() === 3; // ===3 mease clauses is empty. only ['{', SyntaxList, '}']
+            return node.caseBlock.getChildCount() === 3; // means clauses is empty. only ['{', SyntaxList, '}']
         }
         function extractEnumInfo(fileName, positionOrRange, simple) {
             var sourceFile = info.languageService.getProgram().getSourceFile(fileName);
@@ -57,7 +56,7 @@ function init(modules) {
             //Is the node is an empty switch statement?
             if (nodeAtCursor &&
                 ts.isSwitchStatement(nodeAtCursor) &&
-                isEmptyCaseBlock(nodeAtCursor)) // ===3 mease clauses is empty. only ['{', SyntaxList, '}']
+                isEmptyCaseBlock(nodeAtCursor)) // means clauses is empty. only ['{', SyntaxList, '}']
              {
                 var typeChecker = info.languageService.getProgram().getTypeChecker();
                 var expType = typeChecker.getTypeAtLocation(nodeAtCursor.expression);
@@ -81,25 +80,28 @@ function init(modules) {
             }
             if (extractEnumInfo(fileName, positionOrRange, true)) {
                 refactors.push({
-                    name: 'generate-switch-case',
-                    description: 'generate switch case desc',
-                    actions: [{ name: 'generate-switch-case', description: 'Generate Switch Case' }]
+                    name: 'complete-switch-case',
+                    description: 'Complete on switch cases for enums and unions with nonReachable',
+                    actions: [{ name: 'complete-switch-case', description: '✨ Complete Switch' }]
                 });
             }
             return refactors;
         };
         proxy.getEditsForRefactor = function (fileName, formatOptions, positionOrRange, refactorName, actionName, preferences) {
             var refactors = info.languageService.getEditsForRefactor(fileName, formatOptions, positionOrRange, refactorName, actionName, preferences);
-            if (actionName === 'generate-switch-case') {
+            if (actionName === 'complete-switch-case') {
                 var obj_1 = extractEnumInfo(fileName, positionOrRange, false);
                 if (obj_1) {
                     var sourceFile_1 = info.languageService.getProgram().getSourceFile(fileName);
                     var clause_1 = [];
                     obj_1.nodeList.forEach(function (item) {
-                        //ts.createPropertyAccessChain()
-                        clause_1.push(factory.createCaseClause(item, []));
+                        return clause_1.push(factory.createCaseClause(item, []));
                     });
-                    var defaultClause = factory.createDefaultClause([factory.createExpressionStatement(factory.createCallExpression(factory.createIdentifier("notReachable"), undefined, []))]);
+                    clause_1.pop();
+                    clause_1.push(factory.createCaseClause(obj_1.nodeList[obj_1.nodeList.length - 1], [factory.createBreakStatement(undefined)]));
+                    var defaultClause = factory.createDefaultClause([factory.createExpressionStatement(factory.createCallExpression(factory.createIdentifier("notReachable"), undefined, 
+                        // TODO: Complete with identifier
+                        []))]);
                     ts.addSyntheticLeadingComment(defaultClause, ts.SyntaxKind.MultiLineCommentTrivia, " istanbul ignore next ", true);
                     clause_1.push(defaultClause);
                     var caseBlockNode = factory.createCaseBlock(clause_1);

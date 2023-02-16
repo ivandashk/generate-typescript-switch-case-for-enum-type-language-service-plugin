@@ -81,9 +81,9 @@ function init(modules: { typescript: typeof import('typescript/lib/tsserverlibra
 			if (extractEnumInfo(fileName, positionOrRange, true))
 			{
 				refactors.push({
-					name: 'generate-switch-case',
-					description: 'generate switch case desc',
-					actions: [{ name: 'generate-switch-case', description: 'Generate Switch Case' }],
+					name: 'complete-switch-case',
+					description: 'Complete on switch cases for enums and unions with nonReachable',
+					actions: [{ name: 'complete-switch-case', description: '✨ Complete Switch' }],
 				});
 			}
 
@@ -93,23 +93,24 @@ function init(modules: { typescript: typeof import('typescript/lib/tsserverlibra
 		proxy.getEditsForRefactor = (fileName, formatOptions, positionOrRange, refactorName, actionName, preferences) =>
 		{
 			const refactors = info.languageService.getEditsForRefactor(fileName, formatOptions, positionOrRange, refactorName, actionName, preferences);
-			if (actionName === 'generate-switch-case')
+			if (actionName === 'complete-switch-case')
 			{
 				let obj = extractEnumInfo(fileName, positionOrRange, false);
 				if (obj)
 				{
 					const sourceFile = info.languageService.getProgram().getSourceFile(fileName);
 					let clause: ts.CaseOrDefaultClause[] = [];
+
 					obj.nodeList.forEach(item =>
-					{
-						//ts.createPropertyAccessChain()
-						clause.push(factory.createCaseClause(item, []));
-					});
-					
+						clause.push(factory.createCaseClause(item, []))
+					);
+					clause.pop()
+					clause.push(factory.createCaseClause(obj.nodeList[obj.nodeList.length - 1], [factory.createBreakStatement(undefined)]))
 
 					const defaultClause = factory.createDefaultClause([factory.createExpressionStatement(factory.createCallExpression(
 						factory.createIdentifier("notReachable"),
 						undefined,
+						// TODO: Complete with identifier
 						[]
 					  ))])
 					  
