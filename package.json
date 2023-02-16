@@ -4,9 +4,9 @@
 	"description": "A typescript language service plugin to generate switch case for enum type",
 	"main": "index.js",
 	"scripts": {
-		"test": "mocha test"
+		"compile": "tsc index.ts"
 	},
-	"author": "heroboy",
+	"author": "ivandashk",
 	"license": "",
 	"dependencies": {},
 	"devDependencies": {
@@ -17,7 +17,7 @@
 		"typescript": "^4.0.3"
 	},
 	"repository": {
-		"url": "https://github.com/heroboy/generate-typescript-switch-case-for-enum-type-language-service-plugin"
+		"url": "https://github.com/ivandashk/generate-typescript-switch-case-for-enum-type-language-service-plugin"
 	},
 	"keywords": [
 		"typescript"

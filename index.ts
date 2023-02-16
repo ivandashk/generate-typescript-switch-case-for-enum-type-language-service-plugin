@@ -1,10 +1,7 @@
-//import { TypeChecker, Expression } from 'typescript/lib/tsserverlibrary'
-
-
-
 function init(modules: { typescript: typeof import('typescript/lib/tsserverlibrary'); })
 {
 	const ts = modules.typescript;
+	const factory = modules.typescript.factory;
 	function create(info: ts.server.PluginCreateInfo): ts.LanguageService
 	{
 		const proxy: ts.LanguageService = Object.create(null);
@@ -32,7 +29,7 @@ function init(modules: { typescript: typeof import('typescript/lib/tsserverlibra
 						return false;
 				}
 			}
-			return node.caseBlock.getChildCount() === 3;// ===3 mease clauses is empty. only ['{', SyntaxList, '}']
+			return node.caseBlock.getChildCount() === 3;// means clauses is empty. only ['{', SyntaxList, '}']
 		}
 
 		function extractEnumInfo(fileName: string, positionOrRange: number | ts.TextRange, simple: false): IGenInfo;
@@ -42,7 +39,6 @@ function init(modules: { typescript: typeof import('typescript/lib/tsserverlibra
 			const sourceFile = info.languageService.getProgram().getSourceFile(fileName);
 			if (!sourceFile) return false;
 			if (sourceFile.isDeclarationFile) return;
-			//I can not `import { NodeFlags } from 'typescript/lib/tsserverlibrary';`
 			const JavaScriptFileNodeFlags = 131072;
 			const isJs = !!(sourceFile.flags & JavaScriptFileNodeFlags);
 			let nodeAtCursor = findChildContainingPosition(sourceFile, positionOrRangeToNumber(positionOrRange));
@@ -54,7 +50,7 @@ function init(modules: { typescript: typeof import('typescript/lib/tsserverlibra
 			//Is the node is an empty switch statement?
 			if (nodeAtCursor &&
 				ts.isSwitchStatement(nodeAtCursor) &&
-				isEmptyCaseBlock(nodeAtCursor))// ===3 mease clauses is empty. only ['{', SyntaxList, '}']
+				isEmptyCaseBlock(nodeAtCursor))// means clauses is empty. only ['{', SyntaxList, '}']
 			{
 				let typeChecker = info.languageService.getProgram().getTypeChecker();
 				let expType = typeChecker.getTypeAtLocation(nodeAtCursor.expression);
@@ -68,7 +64,6 @@ function init(modules: { typescript: typeof import('typescript/lib/tsserverlibra
 				}
 			}
 		}
-
 
 		// Here starts our second behavior: a refactor that will always be suggested no matter where is the cursor and does nothing
 		// overriding getApplicableRefactors we add our refactor metadata only if the user has the cursor on the place we desire, in our case a class or interface declaration identifier
@@ -108,21 +103,29 @@ function init(modules: { typescript: typeof import('typescript/lib/tsserverlibra
 					obj.nodeList.forEach(item =>
 					{
 						//ts.createPropertyAccessChain()
-						clause.push(ts.createCaseClause(item, [ts.createBreak()]));
+						clause.push(factory.createCaseClause(item, []));
 					});
-					clause.push(ts.createDefaultClause([ts.createBreak()]));
-					let caseBlockNode = ts.createCaseBlock(clause);
-					let switchNode = ts.createSwitch(ts.getMutableClone(obj.switchNode.expression), caseBlockNode);
+					
+
+					const defaultClause = factory.createDefaultClause([factory.createExpressionStatement(factory.createCallExpression(
+						factory.createIdentifier("notReachable"),
+						undefined,
+						[]
+					  ))])
+					  
+					ts.addSyntheticLeadingComment(defaultClause, ts.SyntaxKind.MultiLineCommentTrivia, " istanbul ignore next ", true);
+					clause.push(defaultClause);
+					let caseBlockNode = factory.createCaseBlock(clause);
+					let switchNode = factory.createSwitchStatement(ts.getMutableClone(obj.switchNode.expression), caseBlockNode);
+
 					let edits = ts['textChanges'].ChangeTracker.with({
 						host: info.languageServiceHost,
 						formatContext: ts['formatting'].getFormatContext(formatOptions),
-						preferences: preferences
-					}, (tracker) =>
-					{
-						//tracker.insertNodesAt(sourceFile, obj.pos, clause, {});
-						//tracker.replaceNode(sourceFile, obj.caseBlockNode, caseBlockNode, {});
-						tracker.replaceNode(sourceFile, obj.switchNode, switchNode, undefined);
-					});
+						preferences: {
+							...preferences,
+							quotePreference: 'single'
+						}
+					}, (tracker) => tracker.replaceNode(sourceFile, obj.switchNode, switchNode, undefined));
 					return { edits };
 				}
 			}
@@ -135,7 +138,6 @@ function init(modules: { typescript: typeof import('typescript/lib/tsserverlibra
 
 	function extractEnumMemberList(type: ts.Type, typeChecker: ts.TypeChecker, node: ts.Node, isJs: boolean): ts.Expression[] | undefined
 	{
-		let list: ts.Expression[];
 		//enum is also a union
 		if (type.flags & ts.TypeFlags.Union)
 		{
@@ -167,22 +169,13 @@ function init(modules: { typescript: typeof import('typescript/lib/tsserverlibra
 				{
 					let lt = t as ts.LiteralType;
 					if (!isJs && t.symbol) return typeChecker.symbolToExpression(t.symbol, 0, node, 0);
-					if (t === trueType) return ts.createTrue();
-					if (t === falseType) return ts.createFalse();
+					if (t === trueType) return factory.createTrue();
+					if (t === falseType) return factory.createFalse();
 					return ts.createLiteral(lt.value);
 				});
 			}
 		}
 		return;
-	}
-	// Helper functions used in this tutorial
-
-	/**normalize the parameter so we are sure is of type Range */
-	function positionOrRangeToRange(positionOrRange: number | ts.TextRange): ts.TextRange
-	{
-		return typeof positionOrRange === 'number'
-			? { pos: positionOrRange, end: positionOrRange }
-			: positionOrRange;
 	}
 
 	/**normalize the parameter so we are sure is of type number */

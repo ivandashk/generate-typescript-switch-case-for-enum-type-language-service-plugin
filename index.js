@@ -1,7 +1,19 @@
 "use strict";
 //import { TypeChecker, Expression } from 'typescript/lib/tsserverlibrary'
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
 function init(modules) {
     var ts = modules.typescript;
+    var factory = modules.typescript.factory;
     function create(info) {
         var proxy = Object.create(null);
         var _loop_1 = function (k) {
@@ -35,7 +47,6 @@ function init(modules) {
                 return false;
             if (sourceFile.isDeclarationFile)
                 return;
-            //I can not `import { NodeFlags } from 'typescript/lib/tsserverlibrary';`
             var JavaScriptFileNodeFlags = 131072;
             var isJs = !!(sourceFile.flags & JavaScriptFileNodeFlags);
             var nodeAtCursor = findChildContainingPosition(sourceFile, positionOrRangeToNumber(positionOrRange));
@@ -86,20 +97,18 @@ function init(modules) {
                     var clause_1 = [];
                     obj_1.nodeList.forEach(function (item) {
                         //ts.createPropertyAccessChain()
-                        clause_1.push(ts.createCaseClause(item, [ts.createBreak()]));
+                        clause_1.push(factory.createCaseClause(item, []));
                     });
-                    clause_1.push(ts.createDefaultClause([ts.createBreak()]));
-                    var caseBlockNode = ts.createCaseBlock(clause_1);
-                    var switchNode_1 = ts.createSwitch(ts.getMutableClone(obj_1.switchNode.expression), caseBlockNode);
+                    var defaultClause = factory.createDefaultClause([factory.createExpressionStatement(factory.createCallExpression(factory.createIdentifier("notReachable"), undefined, []))]);
+                    ts.addSyntheticLeadingComment(defaultClause, ts.SyntaxKind.MultiLineCommentTrivia, " istanbul ignore next ", true);
+                    clause_1.push(defaultClause);
+                    var caseBlockNode = factory.createCaseBlock(clause_1);
+                    var switchNode_1 = factory.createSwitchStatement(ts.getMutableClone(obj_1.switchNode.expression), caseBlockNode);
                     var edits = ts['textChanges'].ChangeTracker["with"]({
                         host: info.languageServiceHost,
                         formatContext: ts['formatting'].getFormatContext(formatOptions),
-                        preferences: preferences
-                    }, function (tracker) {
-                        //tracker.insertNodesAt(sourceFile, obj.pos, clause, {});
-                        //tracker.replaceNode(sourceFile, obj.caseBlockNode, caseBlockNode, {});
-                        tracker.replaceNode(sourceFile_1, obj_1.switchNode, switchNode_1, undefined);
-                    });
+                        preferences: __assign(__assign({}, preferences), { quotePreference: 'single' })
+                    }, function (tracker) { return tracker.replaceNode(sourceFile_1, obj_1.switchNode, switchNode_1, undefined); });
                     return { edits: edits };
                 }
             }
@@ -108,7 +117,6 @@ function init(modules) {
         return proxy;
     }
     function extractEnumMemberList(type, typeChecker, node, isJs) {
-        var list;
         //enum is also a union
         if (type.flags & ts.TypeFlags.Union) {
             /*
@@ -137,21 +145,14 @@ function init(modules) {
                     if (!isJs && t.symbol)
                         return typeChecker.symbolToExpression(t.symbol, 0, node, 0);
                     if (t === trueType_1)
-                        return ts.createTrue();
+                        return factory.createTrue();
                     if (t === falseType_1)
-                        return ts.createFalse();
+                        return factory.createFalse();
                     return ts.createLiteral(lt.value);
                 });
             }
         }
         return;
-    }
-    // Helper functions used in this tutorial
-    /**normalize the parameter so we are sure is of type Range */
-    function positionOrRangeToRange(positionOrRange) {
-        return typeof positionOrRange === 'number'
-            ? { pos: positionOrRange, end: positionOrRange }
-            : positionOrRange;
     }
     /**normalize the parameter so we are sure is of type number */
     function positionOrRangeToNumber(positionOrRange) {
